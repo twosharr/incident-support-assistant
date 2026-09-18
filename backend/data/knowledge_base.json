@@ -1,0 +1,358 @@
+[
+  {
+    "id": "KB001",
+    "title": "Troubleshooting Payment Gateway Timeouts",
+    "category": "Payment",
+    "tags": [
+      "payment",
+      "gateway",
+      "timeout",
+      "troubleshooting"
+    ],
+    "content": "Payment gateway timeouts can occur due to several reasons: 1) Database connection pool exhaustion. 2) Upstream payment processor issues. 3) Network latency. 4) Certificate expiry. Steps: First check the payment service health dashboard. Then review error logs. Common fix: increase DB connection pool or enable failover gateway.",
+    "steps": [
+      "Check payment service health dashboard at monitoring.internal/payment",
+      "Review error logs: grep timeout /var/log/payment-service/app.log",
+      "Check DB connection pool utilization",
+      "Verify payment processor status",
+      "Enable failover: set PAYMENT_FAILOVER=true in service config",
+      "If unresolved, escalate to #payment-oncall"
+    ],
+    "related_incidents": [
+      "INC12345",
+      "INC9876",
+      "INC8412"
+    ],
+    "last_updated": "2026-09-01T00:00:00Z"
+  },
+  {
+    "id": "KB002",
+    "title": "Database Connection Pool Management Best Practices",
+    "category": "Database",
+    "tags": [
+      "database",
+      "connection-pool",
+      "postgresql",
+      "performance"
+    ],
+    "content": "Connection pool exhaustion is a common cause of service outages. Best practices: Set pool size to (num_cores * 2) + num_spindles. Monitor pool utilization via pg_stat_activity. Set connection timeout to avoid indefinite waits. Use PgBouncer for connection multiplexing. Alert when pool utilization exceeds 80%.",
+    "steps": [
+      "Check current pool usage: SELECT count(*) FROM pg_stat_activity WHERE state=active",
+      "Review pool configuration in application config file",
+      "Increase pool size gradually (e.g., 10 to 25 to 50)",
+      "Consider adding PgBouncer as connection proxy",
+      "Set up alerting for pool utilization over 80%",
+      "Review slow queries that may be holding connections"
+    ],
+    "related_incidents": [
+      "INC12300",
+      "INC9876",
+      "INC11700"
+    ],
+    "last_updated": "2026-08-15T00:00:00Z"
+  },
+  {
+    "id": "KB003",
+    "title": "SSL Certificate Monitoring and Renewal Process",
+    "category": "Security",
+    "tags": [
+      "ssl",
+      "certificate",
+      "security",
+      "renewal"
+    ],
+    "content": "SSL certificate expiry is a common but preventable outage cause. Set up automated monitoring 90, 30, 14, and 7 days before expiry. Use cert-manager in Kubernetes. Always test certificate renewal in staging first. Keep a runbook for emergency manual renewal.",
+    "steps": [
+      "Check certificate expiry: openssl x509 -enddate -noout -in cert.pem",
+      "Verify auto-renewal is configured: systemctl status certbot.timer",
+      "Manual renewal: certbot renew --force-renewal",
+      "Deploy new certificate to load balancers",
+      "Verify with curl -vI https://your-domain.com",
+      "Update monitoring alerts for new expiry date"
+    ],
+    "related_incidents": [
+      "INC11300"
+    ],
+    "last_updated": "2026-07-01T00:00:00Z"
+  },
+  {
+    "id": "KB004",
+    "title": "Kubernetes OOM Kill Investigation and Resolution",
+    "category": "Infrastructure",
+    "tags": [
+      "kubernetes",
+      "oom",
+      "memory",
+      "pod"
+    ],
+    "content": "When pods are OOM killed, investigate memory growth patterns. Check if there is a memory leak or if resource limits are too low. Use kubectl top to see live usage. Review pod logs before OOM event. Consider Vertical Pod Autoscaler for automatic limit adjustment.",
+    "steps": [
+      "Check OOM events: kubectl get events --field-selector reason=OOMKilling",
+      "Review memory usage: kubectl top pods -n namespace",
+      "Check pod resource limits: kubectl describe pod pod-name",
+      "Review logs before OOM: kubectl logs --previous pod-name",
+      "Increase memory limits temporarily in deployment manifest",
+      "Investigate memory leak using profiling tools"
+    ],
+    "related_incidents": [],
+    "last_updated": "2026-06-01T00:00:00Z"
+  },
+  {
+    "id": "KB005",
+    "title": "API Rate Limiting Configuration Guide",
+    "category": "API Gateway",
+    "tags": [
+      "api",
+      "rate-limiting",
+      "gateway",
+      "configuration"
+    ],
+    "content": "Rate limiting misconfigurations can cause legitimate traffic to be blocked. Always test rate limit changes in staging. Use graduated limits (warn at 80%, block at 100%). Monitor for false positive rejections.",
+    "steps": [
+      "Review current rate limit config in API gateway admin console",
+      "Check recent 429 error rates in monitoring dashboard",
+      "Verify per-user vs per-IP limits are correct",
+      "Temporarily increase limits if blocking legitimate traffic",
+      "Test new limits in staging environment first",
+      "Set up alerts for 429 rate exceeding 1% of total requests"
+    ],
+    "related_incidents": [],
+    "last_updated": "2026-05-15T00:00:00Z"
+  },
+  {
+    "id": "KB006",
+    "title": "Kafka Consumer Lag Troubleshooting",
+    "category": "Messaging",
+    "tags": [
+      "kafka",
+      "consumer",
+      "lag",
+      "messaging",
+      "queue"
+    ],
+    "content": "High consumer lag indicates consumers cannot keep up with producers. Investigate consumer health, partition count, and processing rate. Consider scaling consumers or increasing partition count. Check for processing errors causing reprocessing loops.",
+    "steps": [
+      "Check consumer lag: kafka-consumer-groups.sh --describe --group group-id",
+      "Identify lagging partitions and check consumer health",
+      "Review consumer logs for errors or slow processing",
+      "Scale consumer instances if processing is too slow",
+      "Check for poison messages causing processing failures",
+      "Consider increasing partition count for parallelism"
+    ],
+    "related_incidents": [],
+    "last_updated": "2026-04-01T00:00:00Z"
+  },
+  {
+    "id": "KB007",
+    "title": "Load Balancer Health Check Configuration",
+    "category": "Infrastructure",
+    "tags": [
+      "load-balancer",
+      "health-check",
+      "nginx",
+      "infrastructure"
+    ],
+    "content": "Incorrect health check configuration can mark healthy instances as unhealthy, reducing capacity. Ensure health check endpoints return 200 OK and respond within the timeout. Test health checks manually.",
+    "steps": [
+      "Check load balancer backend pool status in admin console",
+      "Manually test health endpoint: curl -f http://instance-ip/health",
+      "Review health check timeout and interval settings",
+      "Check application logs on marked-unhealthy instances",
+      "Adjust timeout if health endpoint is slow",
+      "Re-enable healthy instances after fixing root cause"
+    ],
+    "related_incidents": [
+      "INC12360"
+    ],
+    "last_updated": "2026-03-01T00:00:00Z"
+  },
+  {
+    "id": "KB008",
+    "title": "Authentication Service Debugging Guide",
+    "category": "Authentication",
+    "tags": [
+      "auth",
+      "authentication",
+      "jwt",
+      "session",
+      "redis"
+    ],
+    "content": "Authentication issues can stem from Redis unavailability, JWT configuration issues, or session store problems. Check Redis connectivity first. Verify JWT secret consistency across service instances. Monitor token validation error rates.",
+    "steps": [
+      "Check Redis connectivity: redis-cli -h redis-host ping",
+      "Review auth service error logs for specific failure types",
+      "Check Redis memory usage and eviction policy",
+      "Verify JWT_SECRET is consistent across all auth service pods",
+      "Check session TTL configuration",
+      "Restart auth service pods if Redis was recovered"
+    ],
+    "related_incidents": [
+      "INC11800"
+    ],
+    "last_updated": "2026-02-15T00:00:00Z"
+  },
+  {
+    "id": "KB009",
+    "title": "CDN Cache Invalidation Runbook",
+    "category": "Infrastructure",
+    "tags": [
+      "cdn",
+      "cache",
+      "invalidation",
+      "deployment"
+    ],
+    "content": "After deployments, CDN cache must be invalidated to serve new assets. Automate this as part of the deployment pipeline. Verify CDN API credentials are fresh. Always confirm invalidation completed before marking deployment done.",
+    "steps": [
+      "Check CDN API token is valid",
+      "Trigger cache invalidation via CDN dashboard or API",
+      "Monitor invalidation job status in CDN admin console",
+      "Test that new assets are being served",
+      "Check cache-control headers for proper max-age settings",
+      "Update deployment checklist to include cache invalidation step"
+    ],
+    "related_incidents": [],
+    "last_updated": "2026-01-10T00:00:00Z"
+  },
+  {
+    "id": "KB010",
+    "title": "Database Query Performance Optimization",
+    "category": "Database",
+    "tags": [
+      "database",
+      "performance",
+      "index",
+      "query",
+      "optimization"
+    ],
+    "content": "Slow queries are a common cause of service latency. Use EXPLAIN ANALYZE to identify problematic queries. Add appropriate indexes. Avoid N+1 queries. Consider read replicas for reporting queries.",
+    "steps": [
+      "Identify slow queries via pg_stat_statements",
+      "Analyze slow query: EXPLAIN ANALYZE your-query",
+      "Add missing indexes based on query plan",
+      "Consider partial indexes for filtered queries",
+      "Move expensive reports to read replica",
+      "Set statement_timeout for API queries"
+    ],
+    "related_incidents": [],
+    "last_updated": "2025-12-01T00:00:00Z"
+  },
+  {
+    "id": "KB011",
+    "title": "Disk Space Management for Build Servers",
+    "category": "DevOps",
+    "tags": [
+      "disk-space",
+      "ci-cd",
+      "build",
+      "cleanup"
+    ],
+    "content": "Build servers accumulate docker images, build artifacts, and logs over time. Set up automated cleanup. Monitor disk usage and alert at 80%.",
+    "steps": [
+      "Check disk usage: df -h",
+      "Clean Docker resources: docker system prune -af --volumes",
+      "Remove old build artifacts: find /builds -mtime +7 -delete",
+      "Set up automated cleanup cron job",
+      "Expand disk or move to larger storage if needed",
+      "Set up alerting for disk usage over 80%"
+    ],
+    "related_incidents": [],
+    "last_updated": "2026-08-01T00:00:00Z"
+  },
+  {
+    "id": "KB012",
+    "title": "ETL Pipeline Failure Recovery",
+    "category": "Data Engineering",
+    "tags": [
+      "etl",
+      "data-pipeline",
+      "recovery",
+      "backfill"
+    ],
+    "content": "ETL failures require identifying the failure point and safely re-running from that point. Always ensure idempotency in ETL jobs. Use checkpointing to avoid full reruns.",
+    "steps": [
+      "Review ETL job logs for failure point and error message",
+      "Check source system availability",
+      "Verify target data warehouse connectivity",
+      "Identify last successful checkpoint",
+      "Re-run ETL from last checkpoint (not full restart)",
+      "Validate data completeness after recovery"
+    ],
+    "related_incidents": [],
+    "last_updated": "2026-07-15T00:00:00Z"
+  },
+  {
+    "id": "KB013",
+    "title": "Mobile Push Notification Debugging",
+    "category": "Notifications",
+    "tags": [
+      "push",
+      "notification",
+      "ios",
+      "android",
+      "apns",
+      "fcm"
+    ],
+    "content": "Push notification failures are often caused by expired certificates (APNS), invalid tokens, or FCM configuration issues. Check provider-specific dashboards for delivery rates.",
+    "steps": [
+      "Check APNS certificate expiry for iOS push",
+      "Verify FCM API key validity for Android push",
+      "Check notification provider dashboard for delivery rates",
+      "Test with a known working device to isolate scope",
+      "Review device token registration freshness",
+      "Check payload size limits"
+    ],
+    "related_incidents": [],
+    "last_updated": "2026-06-20T00:00:00Z"
+  },
+  {
+    "id": "KB014",
+    "title": "Incident Response Runbook - P1 Critical",
+    "category": "Incident Response",
+    "tags": [
+      "incident",
+      "p1",
+      "critical",
+      "runbook",
+      "response"
+    ],
+    "content": "P1 Critical incidents require immediate response. Declare incident, assign roles (Incident Commander, Communications Lead, Technical Lead). Provide updates every 15 minutes. Focus on restoration over root cause during active incident.",
+    "steps": [
+      "Declare incident in #incidents Slack channel",
+      "Page on-call engineer via PagerDuty",
+      "Assign Incident Commander (IC) role",
+      "Create incident bridge/war room",
+      "Identify customer impact and communicate to stakeholders",
+      "Focus on immediate mitigation and restoration",
+      "Provide status updates every 15 minutes",
+      "Escalate to engineering leadership if unresolved in 30 minutes",
+      "Post resolution: update status page",
+      "Schedule post-mortem within 48 hours"
+    ],
+    "related_incidents": [],
+    "last_updated": "2026-09-01T00:00:00Z"
+  },
+  {
+    "id": "KB015",
+    "title": "Service Health Check Implementation Guide",
+    "category": "Reliability",
+    "tags": [
+      "health-check",
+      "reliability",
+      "sre",
+      "monitoring"
+    ],
+    "content": "Every service must expose a /health endpoint. Implement shallow and deep health checks. Shallow: returns 200 if service is running. Deep: checks DB connectivity, cache availability, and upstream dependencies.",
+    "steps": [
+      "Implement GET /health returning status: ok",
+      "Implement GET /health/deep checking DB, cache, and upstream services",
+      "Configure Kubernetes liveness probe on /health",
+      "Configure Kubernetes readiness probe on /health/deep",
+      "Set appropriate timeout and failure thresholds",
+      "Add health check to monitoring dashboard"
+    ],
+    "related_incidents": [
+      "INC12360"
+    ],
+    "last_updated": "2026-09-10T00:00:00Z"
+  }
+]

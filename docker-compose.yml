@@ -1,0 +1,42 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: incident-assistant-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - MICROSOFT_APP_ID=${MICROSOFT_APP_ID:-}
+      - MICROSOFT_APP_PASSWORD=${MICROSOFT_APP_PASSWORD:-}
+      - DEBUG=true
+      - CORS_ORIGINS=["http://localhost:3000","http://frontend:3000"]
+    volumes:
+      - ./backend:/app
+    networks:
+      - incident-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: incident-assistant-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - incident-net
+    restart: unless-stopped
+
+networks:
+  incident-net:
+    driver: bridge

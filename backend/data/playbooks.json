@@ -1,0 +1,93 @@
+{
+  "payment": {
+    "title": "Payment Service Troubleshooting Playbook",
+    "steps": [
+      "1. Check payment service health: curl https://monitoring.internal/api/health/payment",
+      "2. Review error logs: grep ERROR /var/log/payment-service/app.log",
+      "3. Check DB connection pool utilization via Grafana dashboard",
+      "4. Verify upstream payment processor status at https://status.stripe.com",
+      "5. Check if recent deployment occurred: kubectl rollout history deploy/payment-service",
+      "6. Test backup gateway: curl -X POST https://payment-bkp.internal/v1/charge",
+      "7. Enable failover if backup gateway is healthy: kubectl set env deploy/payment-service PAYMENT_FAILOVER=true",
+      "8. If error rate over 50%, consider rolling back last deployment",
+      "9. Escalate to #payment-oncall if unresolved after 15 minutes"
+    ],
+    "escalation": "#payment-oncall",
+    "runbook_url": "https://wiki.internal/runbooks/payment-service"
+  },
+  "database": {
+    "title": "Database Troubleshooting Playbook",
+    "steps": [
+      "1. Check database connectivity: psql -h db.internal -U app_user -c SELECT 1",
+      "2. Check active connections: SELECT count(*) FROM pg_stat_activity WHERE state=active",
+      "3. Check for long-running queries: SELECT pid, now()-query_start, query FROM pg_stat_activity",
+      "4. Check disk space: df -h /var/lib/postgresql",
+      "5. Review slow query log",
+      "6. Kill blocking queries if necessary: SELECT pg_terminate_backend(pid)",
+      "7. Escalate to #db-oncall if unresolved"
+    ],
+    "escalation": "#db-oncall",
+    "runbook_url": "https://wiki.internal/runbooks/database"
+  },
+  "auth": {
+    "title": "Authentication Service Troubleshooting Playbook",
+    "steps": [
+      "1. Check auth service health: curl https://auth.internal/health",
+      "2. Test login flow with test credentials",
+      "3. Check Redis connectivity: redis-cli -h cache.internal ping",
+      "4. Check Redis memory: redis-cli -h cache.internal info memory",
+      "5. Review auth service logs for error patterns",
+      "6. Verify JWT_SECRET is consistent across all pods",
+      "7. Restart auth pods if Redis was recovered",
+      "8. Escalate to #identity-oncall if login success rate under 90%"
+    ],
+    "escalation": "#identity-oncall",
+    "runbook_url": "https://wiki.internal/runbooks/auth-service"
+  },
+  "notification": {
+    "title": "Notification Service Troubleshooting Playbook",
+    "steps": [
+      "1. Check notification service health: curl https://notifications.internal/health",
+      "2. Check email queue depth via admin API",
+      "3. Verify SMTP connectivity: telnet smtp.internal 587",
+      "4. Check APNS certificate for iOS push: openssl x509 -enddate -noout -in apns.pem",
+      "5. Verify FCM API key validity for Android push",
+      "6. Review notification service error logs",
+      "7. Test sending a single notification manually via admin API",
+      "8. Escalate to #notifications-oncall if delivery rate under 80%"
+    ],
+    "escalation": "#notifications-oncall",
+    "runbook_url": "https://wiki.internal/runbooks/notification-service"
+  },
+  "infrastructure": {
+    "title": "Infrastructure Troubleshooting Playbook",
+    "steps": [
+      "1. Check cluster health: kubectl get nodes",
+      "2. Check pod status: kubectl get pods --all-namespaces | grep -v Running",
+      "3. Check load balancer status in cloud console",
+      "4. Verify health check endpoints are responding: curl -f http://instance-ip/health",
+      "5. Check disk space on nodes: kubectl top nodes",
+      "6. Review cluster events: kubectl get events --all-namespaces",
+      "7. Escalate to #sre-oncall for critical infrastructure issues"
+    ],
+    "escalation": "#sre-oncall",
+    "runbook_url": "https://wiki.internal/runbooks/infrastructure"
+  },
+  "general": {
+    "title": "General Incident Troubleshooting Playbook",
+    "steps": [
+      "1. Identify the affected service and check its health endpoint",
+      "2. Review recent deployments in the last 2 hours",
+      "3. Check error rate and latency metrics in Grafana",
+      "4. Review application error logs for error patterns",
+      "5. Check upstream dependencies are healthy",
+      "6. Check infrastructure health (CPU, memory, disk, network)",
+      "7. Identify if there is a recent config change",
+      "8. Apply relevant workaround if available",
+      "9. Escalate to service owner if unresolved after 15 minutes",
+      "10. For P1: create incident bridge and notify stakeholders"
+    ],
+    "escalation": "#oncall-general",
+    "runbook_url": "https://wiki.internal/runbooks"
+  }
+}
