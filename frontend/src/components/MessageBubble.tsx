@@ -14,6 +14,7 @@ const TOOL_LABELS: Record<string, { icon: string; label: string }> = {
   get_troubleshooting_steps: { icon: "🔧", label: "Playbook" },
   search_knowledge_base: { icon: "📚", label: "Knowledge Base" },
   get_all_services_status: { icon: "🗺️", label: "System Status" },
+  get_comprehensive_troubleshooting: { icon: "🧠", label: "Smart Investigation" },
 };
 
 export function MessageBubble({ message }: Props) {

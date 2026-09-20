@@ -47,6 +47,10 @@ class ToolRegistry:
         "get_all_services_status": {
             "description": "Get a summary of health status for all services",
             "params": []
+        },
+        "get_comprehensive_troubleshooting": {
+            "description": "Aggregate troubleshooting playbooks, active workarounds, past similar incidents, and knowledge base articles.",
+            "params": ["service_or_issue", "description"]
         }
     }
 
@@ -100,3 +104,32 @@ class ToolRegistry:
     def _tool_get_all_services_status(self) -> ToolResult:
         services = self.store.get_all_services_status()
         return ToolResult("get_all_services_status", [s.model_dump() for s in services])
+
+    def _tool_get_comprehensive_troubleshooting(self, service_or_issue: str, description: str = "") -> ToolResult:
+        query_term = description if description else service_or_issue
+
+        playbook = self.store.get_playbook(service_or_issue)
+        
+        active_incidents = self.store.list_incidents(service=service_or_issue)
+        active_with_workarounds = [
+            {"id": i.id, "title": i.title, "status": i.status, "workaround": i.workaround} 
+            for i in active_incidents 
+            if i.status.lower() in ["in progress", "active", "open", "monitoring"] and i.workaround
+        ]
+        
+        similar_incidents = self.store.find_similar_incidents(query_term, resolved_only=True, top_k=2)
+        past_resolutions = [
+            {"id": i.id, "title": i.title, "root_cause": i.root_cause, "resolution": i.resolution}
+            for i in similar_incidents
+        ]
+        
+        articles = self.store.search_knowledge(query_term, top_k=2)
+        
+        data = {
+            "service_or_issue": service_or_issue,
+            "troubleshooting_playbook": playbook,
+            "active_incidents_with_workarounds": active_with_workarounds,
+            "similar_past_incidents": past_resolutions,
+            "knowledge_articles": [a.model_dump() for a in articles]
+        }
+        return ToolResult("get_comprehensive_troubleshooting", data)

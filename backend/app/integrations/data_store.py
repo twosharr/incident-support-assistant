@@ -97,15 +97,30 @@ class DataStore:
             score = 0
             content_lower = article.content.lower()
             title_lower = article.title.lower()
+            category_lower = article.category.lower() if getattr(article, "category", None) else ""
 
-            # Title match is worth more
+            # 1. Exact service/category match
+            if query_lower == category_lower or query_lower in category_lower:
+                score += 50
+
             for word in query_words:
+                # 1. Category word match
+                if word in category_lower:
+                    score += 20
+                
+                # 2. Tag match
+                if any(word in tag.lower() for tag in article.tags):
+                    score += 15
+                
+                # 3. Related incident match
+                if any(word in inc.lower() for inc in getattr(article, "related_incidents", [])):
+                    score += 10
+                
+                # 4. Keyword match
                 if word in title_lower:
-                    score += 3
-                if word in content_lower:
+                    score += 5
+                elif word in content_lower:
                     score += 1
-                if word in article.tags:
-                    score += 2
 
             if score > 0:
                 scored.append((score, article))

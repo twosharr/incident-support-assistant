@@ -127,6 +127,16 @@ class TestToolRegistry:
         assert result.found is True
         assert "steps" in result.data
 
+    def test_get_comprehensive_troubleshooting_tool(self):
+        registry = ToolRegistry()
+        result = registry.execute("get_comprehensive_troubleshooting", service_or_issue="payment", description="payment gateway timeout")
+        assert result.found is True
+        data = result.data
+        assert "troubleshooting_playbook" in data
+        assert "active_incidents_with_workarounds" in data
+        assert "similar_past_incidents" in data
+        assert "knowledge_articles" in data
+
     def test_get_all_services_status_tool(self):
         registry = ToolRegistry()
         result = registry.execute("get_all_services_status")
@@ -151,7 +161,13 @@ class TestIntentClassifier:
 
     def test_classify_payment_outage(self):
         intent, params = self.classifier.classify("Is there an outage affecting the payment service?")
+        assert intent == "get_comprehensive_troubleshooting"
+        assert params["service_or_issue"] == "payment"
+
+    def test_classify_payment_status(self):
+        intent, params = self.classifier.classify("What is the health status of the payment service?")
         assert intent == "get_service_health"
+        assert params["service_name"] == "payment"
         assert params["service_name"] == "payment"
 
     def test_classify_similar_incidents(self):
@@ -160,7 +176,8 @@ class TestIntentClassifier:
 
     def test_classify_troubleshooting(self):
         intent, params = self.classifier.classify("What are the troubleshooting steps for database issues?")
-        assert intent == "get_troubleshooting_steps"
+        assert intent == "get_comprehensive_troubleshooting"
+        assert params["service_or_issue"] == "database"
 
     def test_classify_all_services(self):
         intent, params = self.classifier.classify("Show me the status of all services")
@@ -189,10 +206,11 @@ class TestAIAssistant:
         assert "get_incident" in response.tools_used
 
     def test_service_health_query(self):
-        request = ChatRequest(message="Is there an outage affecting the payment service?")
+        request = ChatRequest(message="What is the health status of the payment service?")
         response = self.assistant.chat(request)
         assert response.response is not None
         assert len(response.tools_used) > 0
+        assert "get_service_health" in response.tools_used
 
     def test_similar_incidents_query(self):
         request = ChatRequest(message="Show me past incidents similar to payment gateway timeout")
@@ -203,7 +221,8 @@ class TestAIAssistant:
         request = ChatRequest(message="What are the troubleshooting steps for payment issues?")
         response = self.assistant.chat(request)
         assert response.response is not None
-        assert "step" in response.response.lower() or "check" in response.response.lower()
+        assert "Diagnostics" in response.response or "Troubleshooting" in response.response
+        assert "get_comprehensive_troubleshooting" in response.tools_used
 
     def test_conversation_id_preserved(self):
         conv_id = "test-conv-123"

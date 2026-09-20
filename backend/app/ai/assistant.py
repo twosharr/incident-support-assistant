@@ -51,7 +51,8 @@ class IntentClassifier:
             r"happened before",
             r"same.*?issue.*?before",
         ],
-        "get_troubleshooting_steps": [
+        "get_troubleshooting_steps": [], # Preserved for direct API calls, but chat uses comprehensive
+        "get_comprehensive_troubleshooting": [
             r"troubleshoot",
             r"debug",
             r"how to fix",
@@ -61,6 +62,15 @@ class IntentClassifier:
             r"how do I",
             r"runbook",
             r"playbook",
+            r"failing",
+            r"down",
+            r"outage",
+            r"issue",
+            r"error",
+            r"not working",
+            r"fails",
+            r"degraded",
+            r"broken",
         ],
         "search_knowledge_base": [
             r"how.*?work",
@@ -110,6 +120,12 @@ class IntentClassifier:
             if re.search(pattern, msg_lower):
                 return "get_all_services_status", {}
 
+        # Check for comprehensive troubleshooting FIRST (takes precedence over service health)
+        for pattern in self.PATTERNS["get_comprehensive_troubleshooting"]:
+            if re.search(pattern, msg_lower):
+                service = self._extract_service(msg_lower)
+                return "get_comprehensive_troubleshooting", {"service_or_issue": service or "general", "description": message}
+
         # Check for service health outage queries
         for pattern in self.PATTERNS["get_service_health"]:
             match = re.search(pattern, msg_lower)
@@ -130,7 +146,7 @@ class IntentClassifier:
             if re.search(pattern, msg_lower):
                 return "find_similar_incidents", {"description": message}
 
-        # Check for troubleshooting
+        # Check for standard troubleshooting (fallback if any patterns remain)
         for pattern in self.PATTERNS["get_troubleshooting_steps"]:
             if re.search(pattern, msg_lower):
                 service = self._extract_service(msg_lower)
@@ -287,6 +303,66 @@ class ResponseFormatter:
 
         sources = [{"type": "Playbook", "title": playbook.get("title", "Playbook")}]
         return response, sources
+
+    def _format_get_comprehensive_troubleshooting(self, result: ToolResult, query: str) -> Tuple[str, list]:
+        data = result.data
+        response = f"## 🧠 Comprehensive Diagnostics for: {data['service_or_issue'].capitalize()}\n\n"
+        sources = []
+
+        # Troubleshooting Steps
+        playbook = data.get("troubleshooting_playbook", {})
+        if playbook and playbook.get("steps"):
+            response += f"### 🔧 Recommended Troubleshooting Steps\n"
+            response += f"*{playbook.get('title', 'Playbook')}*\n\n"
+            for step in playbook.get("steps", []):
+                response += f"{step}\n"
+            if playbook.get("escalation"):
+                response += f"\n📞 **Escalation:** {playbook['escalation']}\n"
+            sources.append({"type": "Playbook", "title": playbook.get("title", "Playbook")})
+            response += "\n"
+        else:
+            response += "### 🔧 Recommended Troubleshooting Steps\n"
+            response += "No official playbook found for this service.\n\n"
+
+        # Workarounds
+        workarounds = data.get("active_incidents_with_workarounds", [])
+        response += "### ⚡ Known Workarounds\n"
+        if workarounds:
+            for inc in workarounds:
+                response += f"- **[{inc['id']}]**: {inc['workaround']}\n"
+                sources.append({"type": "Active Incident", "id": inc["id"], "title": inc["title"]})
+        else:
+            response += "No active workarounds found.\n"
+        response += "\n"
+
+        # Similar Past Incidents
+        past_incidents = data.get("similar_past_incidents", [])
+        response += "### 📖 Similar Incident Resolutions\n\n"
+        if past_incidents:
+            for i, inc in enumerate(past_incidents):
+                response += f"**{inc['id']} – {inc['title']}**\n\n"
+                if inc.get("root_cause"):
+                    response += f"• **Root Cause:**\n{inc['root_cause']}\n\n"
+                if inc.get("resolution"):
+                    response += f"• **Resolution:**\n{inc['resolution']}\n\n"
+                if i < len(past_incidents) - 1:
+                    response += "---\n\n"
+                sources.append({"type": "Resolved Incident", "id": inc["id"], "title": inc["title"]})
+        else:
+            response += "No similar resolved incidents found.\n\n"
+
+        # Knowledge Articles
+        articles = data.get("knowledge_articles", [])
+        response += "### 📚 Related Knowledge Base Articles\n"
+        if articles:
+            for art in articles:
+                response += f"- **{art['title']}** ({art['category']})\n"
+                sources.append({"type": "Knowledge Article", "title": art["title"]})
+        else:
+            response += "No related knowledge articles found.\n"
+        
+        return response, sources
+
 
     def _format_search_knowledge_base(self, result: ToolResult, query: str) -> Tuple[str, list]:
         if not result.found:
