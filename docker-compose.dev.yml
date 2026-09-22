@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  backend:
+    image: python:3.11-slim
+    container_name: incident-assistant-backend-dev
+    working_dir: /app
+    command: >
+      sh -c "pip install -r requirements.txt -q &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - MICROSOFT_APP_ID=${MICROSOFT_APP_ID:-}
+      - MICROSOFT_APP_PASSWORD=${MICROSOFT_APP_PASSWORD:-}
+      - DEBUG=true
+    networks:
+      - incident-net
+
+  frontend-dev:
+    image: node:20-alpine
+    container_name: incident-assistant-frontend-dev
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_BASE=http://localhost:8000
+    networks:
+      - incident-net
+
+networks:
+  incident-net:
+    driver: bridge

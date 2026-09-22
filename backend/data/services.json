@@ -1,0 +1,172 @@
+[
+  {
+    "name": "payment",
+    "display_name": "Payment Service",
+    "status": "degraded",
+    "uptime_percent": 85.0,
+    "error_rate_percent": 15.0,
+    "p99_latency_ms": 3200,
+    "active_incidents": [
+      "INC12345",
+      "INC12340"
+    ],
+    "dependencies": [
+      "auth",
+      "database"
+    ],
+    "team": "Payment Infrastructure Team"
+  },
+  {
+    "name": "auth",
+    "display_name": "Authentication Service",
+    "status": "healthy",
+    "uptime_percent": 99.8,
+    "error_rate_percent": 0.2,
+    "p99_latency_ms": 120,
+    "active_incidents": [
+      "INC12380"
+    ],
+    "dependencies": [
+      "database",
+      "cache"
+    ],
+    "team": "Identity Team"
+  },
+  {
+    "name": "catalog",
+    "display_name": "Product Catalog API",
+    "status": "degraded",
+    "uptime_percent": 99.0,
+    "error_rate_percent": 2.0,
+    "p99_latency_ms": 4500,
+    "active_incidents": [
+      "INC12410"
+    ],
+    "dependencies": [
+      "database",
+      "search"
+    ],
+    "team": "Catalog Team"
+  },
+  {
+    "name": "notification",
+    "display_name": "Notification Service",
+    "status": "degraded",
+    "uptime_percent": 97.0,
+    "error_rate_percent": 3.0,
+    "p99_latency_ms": 800,
+    "active_incidents": [
+      "INC12050"
+    ],
+    "dependencies": [
+      "messaging"
+    ],
+    "team": "Messaging Team"
+  },
+  {
+    "name": "order-service",
+    "display_name": "Order Service",
+    "status": "healthy",
+    "uptime_percent": 99.9,
+    "error_rate_percent": 0.1,
+    "p99_latency_ms": 200,
+    "active_incidents": [],
+    "dependencies": [
+      "database",
+      "payment",
+      "inventory"
+    ],
+    "team": "Backend Engineering"
+  },
+  {
+    "name": "user-service",
+    "display_name": "User Service",
+    "status": "healthy",
+    "uptime_percent": 99.5,
+    "error_rate_percent": 0.5,
+    "p99_latency_ms": 180,
+    "active_incidents": [],
+    "dependencies": [
+      "database",
+      "auth"
+    ],
+    "team": "User Platform Team"
+  },
+  {
+    "name": "infrastructure",
+    "display_name": "Infrastructure",
+    "status": "degraded",
+    "uptime_percent": 96.0,
+    "error_rate_percent": 4.0,
+    "p99_latency_ms": null,
+    "active_incidents": [
+      "INC12360",
+      "INC12420"
+    ],
+    "dependencies": [],
+    "team": "SRE Team"
+  },
+  {
+    "name": "search",
+    "display_name": "Search Service",
+    "status": "healthy",
+    "uptime_percent": 99.7,
+    "error_rate_percent": 0.3,
+    "p99_latency_ms": 250,
+    "active_incidents": [],
+    "dependencies": [
+      "elasticsearch"
+    ],
+    "team": "Search Engineering"
+  },
+  {
+    "name": "database",
+    "display_name": "Database",
+    "status": "healthy",
+    "uptime_percent": 99.95,
+    "error_rate_percent": 0.05,
+    "p99_latency_ms": 50,
+    "active_incidents": [],
+    "dependencies": [],
+    "team": "Database Team"
+  },
+  {
+    "name": "data-pipeline",
+    "display_name": "Data Pipeline",
+    "status": "degraded",
+    "uptime_percent": 80.0,
+    "error_rate_percent": 20.0,
+    "p99_latency_ms": null,
+    "active_incidents": [
+      "INC12350"
+    ],
+    "dependencies": [
+      "database"
+    ],
+    "team": "Data Engineering"
+  },
+  {
+    "name": "devops",
+    "display_name": "CI/CD Pipeline",
+    "status": "degraded",
+    "uptime_percent": 90.0,
+    "error_rate_percent": 10.0,
+    "p99_latency_ms": null,
+    "active_incidents": [
+      "INC12400"
+    ],
+    "dependencies": [],
+    "team": "DevOps Team"
+  },
+  {
+    "name": "api-gateway",
+    "display_name": "API Gateway",
+    "status": "healthy",
+    "uptime_percent": 99.9,
+    "error_rate_percent": 0.1,
+    "p99_latency_ms": 30,
+    "active_incidents": [],
+    "dependencies": [],
+    "team": "Platform Team"
+  }
+]
