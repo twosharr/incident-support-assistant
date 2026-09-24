@@ -132,6 +132,62 @@ export function useChat() {
     [isLoading, animateTyping]
   );
 
+  const uploadImage = useCallback(
+    async (file: File) => {
+      if (!file || isLoading) return;
+
+      const loadingMessage: Message = {
+        id: "loading",
+        role: "assistant",
+        content: "",
+        displayContent: "",
+        timestamp: new Date().toISOString(),
+        isLoading: true,
+      };
+
+      setMessages((prev) => [...prev, loadingMessage]);
+      setIsLoading(true);
+
+      try {
+        const response = await chatApi.uploadImage(file, conversationId.current);
+
+        const newId = uuidv4();
+        const assistantMessage: Message = {
+          id: newId,
+          role: "assistant",
+          content: response.response,
+          displayContent: "",
+          isTyping: true,
+          timestamp: new Date().toISOString(),
+          sources: response.sources,
+          tools_used: response.tools_used,
+        };
+
+        setMessages((prev) =>
+          prev.filter((m) => m.id !== "loading").concat(assistantMessage)
+        );
+
+        setTimeout(() => animateTyping(newId, response.response), 20);
+      } catch (error) {
+        const errText =
+          "⚠️ **Image Analysis Failed**\n\nThe screenshot could not be processed. Please try a clearer image or a PNG/JPG/WebP file.";
+        const errorMessage: Message = {
+          id: uuidv4(),
+          role: "assistant",
+          content: errText,
+          displayContent: errText,
+          timestamp: new Date().toISOString(),
+        };
+        setMessages((prev) =>
+          prev.filter((m) => m.id !== "loading").concat(errorMessage)
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [isLoading, animateTyping]
+  );
+
   const clearConversation = useCallback(() => {
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     const newId = uuidv4();
@@ -140,5 +196,5 @@ export function useChat() {
     setMessages([]);
   }, []);
 
-  return { messages, isLoading, sendMessage, clearConversation };
+  return { messages, isLoading, sendMessage, uploadImage, clearConversation };
 }

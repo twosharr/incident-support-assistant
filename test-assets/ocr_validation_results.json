@@ -1,0 +1,97 @@
+[
+  {
+    "filename": "incident_01_database_timeout.png",
+    "extracted_text": "DATABASE\nTIMI\nINCIDENT\nMONITORING\nALERT\nSERVICE\nALERT:\nAPI-DB latency\nDATABASE\nERROR\n500\npayment-api\nSEVERITY:\nHIGH\nDatabase\nconnection\ntimeout\nConnection\nexhausted\ndb-primary-01:\nread\ntimeout\nafter\n30s\nRUNBOOK\ndb-prod-01:\nquery backlog\n12s\nMitigate and\nvalidate\nTeam:\nplatform-db\nStatus:\nP1\n1\nSev1\nspike\npool",
+    "service": "database",
+    "severity": "high",
+    "detected_issue": "Database connection timeout",
+    "likely_root_cause": "Database timeout is likely affecting the request path.",
+    "smart_investigation_request": {
+      "service_or_issue": "database",
+      "description": "Database connection timeout. Database timeout is likely affecting the request path."
+    },
+    "smart_investigation_response_keys": [
+      "service_or_issue",
+      "troubleshooting_playbook",
+      "active_incidents_with_workarounds",
+      "similar_past_incidents",
+      "knowledge_articles"
+    ]
+  },
+  {
+    "filename": "incident_02_payment_gateway_timeout.png",
+    "extracted_text": "PAYMENT\nGATEW\nINCIDENT\nMONITORING\nALERT\nSERVICE\nERROR\n504\ncheckout-service\nPAYMENT\nPayment gateway\ntimeout\nSEVERITY:\nHIGH\nUpstream processor timed\nout\nafter\n45s\nTransaction\nretries\nincreased\n300%\nCharge endpoints returning\n504s\nRUNBOOK\nSLO\nbreach:\ncheckout latency\n2.5s\nMitigate and\nvalidate\nOwner: payments-team\nStatus:\ndegraded",
+    "service": "payment",
+    "severity": "medium",
+    "detected_issue": "Timeout detected",
+    "likely_root_cause": "Database timeout is likely affecting the request path.",
+    "smart_investigation_request": {
+      "service_or_issue": "payment",
+      "description": "Timeout detected. Database timeout is likely affecting the request path."
+    },
+    "smart_investigation_response_keys": [
+      "service_or_issue",
+      "troubleshooting_playbook",
+      "active_incidents_with_workarounds",
+      "similar_past_incidents",
+      "knowledge_articles"
+    ]
+  },
+  {
+    "filename": "incident_03_redis_auth_failure.png",
+    "extracted_text": "REDIS\nAUTH\nF\nINCIDENT\nMONITORING\nALERT\nSERVICE\nALERT:\nauth-redis\ncache\nunavailable\nAUTH\nJWT\nvalidation\nfailed\nfor\n12% requests\nSEVERITY:\nHIGH\nRedis\nconnection\nreset by peer\nSession\nrefresh failing\nin\neu-west-1\nLogin\nfailures rising:\n42 . 7%\nRUNBOOK\nError:\ninvalid\ntoken\n401\nUnauthorized\nMitigate and\nvalidate\nOwner:\nidentity-platform\nImpact:\nusers\nunable\nto\nsign\nin",
+    "service": "auth",
+    "severity": "medium",
+    "detected_issue": "Service failure detected",
+    "likely_root_cause": "Authentication token or session handling is likely failing.",
+    "smart_investigation_request": {
+      "service_or_issue": "auth",
+      "description": "Service failure detected. Authentication token or session handling is likely failing."
+    },
+    "smart_investigation_response_keys": [
+      "service_or_issue",
+      "troubleshooting_playbook",
+      "active_incidents_with_workarounds",
+      "similar_past_incidents",
+      "knowledge_articles"
+    ]
+  },
+  {
+    "filename": "incident_04_load_balancer_misconfiguration.png",
+    "extracted_text": "LOAD\nBALANCEL\nINCIDENT\nMONITORING\nALERT\nSERVICE\nALERT:\ningress-lb-02\nhealth\ncheck\nfailed\nINFRASTRUCTURE\n503\nService\nUnavailable\nSEVERITY:\nHIGH\nLoad\nbalancer misconfiguration\nBackend\nunhealthy:\n4/8\ntargets\ndown\nSSL\ncertificate expired\non\nedge-lb\nRUNBOOK\nConnection\nresets\nto\n[api/vi/users\nMitigate and\nvalidate\nRegion:\nus-east-1\nOwner: network-ops\npool",
+    "service": "notification",
+    "severity": "high",
+    "detected_issue": "Service unavailable",
+    "likely_root_cause": "Upstream dependency or service availability issue is likely causing the outage.",
+    "smart_investigation_request": {
+      "service_or_issue": "notification",
+      "description": "Service unavailable. Upstream dependency or service availability issue is likely causing the outage."
+    },
+    "smart_investigation_response_keys": [
+      "service_or_issue",
+      "troubleshooting_playbook",
+      "active_incidents_with_workarounds",
+      "similar_past_incidents",
+      "knowledge_articles"
+    ]
+  },
+  {
+    "filename": "incident_05_notification_queue_delay.png",
+    "extracted_text": "NOTIFICATION\nINCIDENT\nMONITORING\nALERT\nSERVICE\nALERT:\nmailer queue latency increasing\nNOTIFICATION\nNotification\nqueue delay:\n14m backlog\nSEVERITY:\nHIGH\nConsumer\n18401\nmessages\nEmail\nand\nSMS dispatch degraded\nRetry\nstorm triggered by\nKafka\nRUNBOOK\nSLA\nbreach\nfor\nuser\nconfirmations\nMitigate and\nvalidate\nTeam:\ncomms-platform\nStatus:\nmonitoring\nlag:\nlag",
+    "service": "notification",
+    "severity": "medium",
+    "detected_issue": "Incident screenshot indicates a service problem",
+    "likely_root_cause": "No clear root cause could be extracted from the screenshot.",
+    "smart_investigation_request": {
+      "service_or_issue": "notification",
+      "description": "Incident screenshot indicates a service problem. No clear root cause could be extracted from the screenshot."
+    },
+    "smart_investigation_response_keys": [
+      "service_or_issue",
+      "troubleshooting_playbook",
+      "active_incidents_with_workarounds",
+      "similar_past_incidents",
+      "knowledge_articles"
+    ]
+  }
+]

@@ -7,14 +7,18 @@ Supports:
 4. Incident Summaries & Count analytics
 5. Plug-and-play LLM (OpenAI GPT-4o / Gemini when API key is present)
 """
+import logging
 import os
 import re
 import uuid
 from typing import List, Tuple, Optional, Dict, Any
 from app.tools.tool_registry import ToolRegistry, ToolResult
+from app.ai.screenshot_analyzer import ScreenshotAnalyzer
+from app.ai.llm_client import LLMFallbackClient
 from app.models import ChatMessage, ChatRequest, ChatResponse
 
 _conversations: dict = {}
+logger = logging.getLogger(__name__)
 
 
 class IntentClassifier:
@@ -452,10 +456,9 @@ class ResponseFormatter:
         response = f"## 🧠 Comprehensive Diagnostics for: {data['service_or_issue'].capitalize()}\n\n"
         sources = []
 
-        # Troubleshooting Steps
         playbook = data.get("troubleshooting_playbook", {})
         if playbook and playbook.get("steps"):
-            response += f"### 🔧 Recommended Troubleshooting Steps\n"
+            response += "### 🔧 Troubleshooting Steps\n"
             response += f"*{playbook.get('title', 'Playbook')}*\n\n"
             for step in playbook.get("steps", []):
                 response += f"{step}\n"
@@ -464,12 +467,11 @@ class ResponseFormatter:
             sources.append({"type": "Playbook", "title": playbook.get("title", "Playbook")})
             response += "\n"
         else:
-            response += "### 🔧 Recommended Troubleshooting Steps\n"
+            response += "### 🔧 Troubleshooting Steps\n"
             response += "No official playbook found for this service.\n\n"
 
-        # Workarounds
         workarounds = data.get("active_incidents_with_workarounds", [])
-        response += "### ⚡ Known Workarounds\n"
+        response += "### ⚡ Workarounds\n"
         if workarounds:
             for inc in workarounds:
                 response += f"- **[{inc['id']}]**: {inc['workaround']}\n"
@@ -478,9 +480,8 @@ class ResponseFormatter:
             response += "No active workarounds found.\n"
         response += "\n"
 
-        # Similar Past Incidents
         past_incidents = data.get("similar_past_incidents", [])
-        response += "### 📖 Similar Incident Resolutions\n\n"
+        response += "### 📖 Similar Incidents\n\n"
         if past_incidents:
             for i, inc in enumerate(past_incidents):
                 response += f"**{inc['id']} – {inc['title']}**\n\n"
@@ -492,18 +493,28 @@ class ResponseFormatter:
                     response += "---\n\n"
                 sources.append({"type": "Resolved Incident", "id": inc["id"], "title": inc["title"]})
         else:
-            response += "No similar resolved incidents found.\n\n"
+            response += "No similar incidents found.\n\n"
 
-        # Knowledge Articles
+        response += "### 🧾 Historical Resolutions\n\n"
+        if past_incidents:
+            for i, inc in enumerate(past_incidents):
+                response += f"**{inc['id']} – {inc['title']}**\n\n"
+                if inc.get("resolution"):
+                    response += f"• **Historical Resolution:**\n{inc['resolution']}\n\n"
+                if i < len(past_incidents) - 1:
+                    response += "---\n\n"
+        else:
+            response += "No historical resolutions found.\n\n"
+
         articles = data.get("knowledge_articles", [])
-        response += "### 📚 Related Knowledge Base Articles\n"
+        response += "### 📚 Knowledge Base Articles\n"
         if articles:
             for art in articles:
                 response += f"- **{art['title']}** ({art['category']})\n"
                 sources.append({"type": "Knowledge Article", "title": art["title"]})
         else:
             response += "No related knowledge articles found.\n"
-        
+
         return response, sources
 
     def _format_search_knowledge_base(self, result: ToolResult, query: str, **kwargs) -> Tuple[str, list]:
@@ -578,6 +589,83 @@ What can I help you with today?"""
         self.tools = ToolRegistry()
         self.classifier = IntentClassifier()
         self.formatter = ResponseFormatter()
+        self.screenshot_analyzer = ScreenshotAnalyzer()
+        self.llm_client = LLMFallbackClient()
+
+    def _should_use_llm_fallback(self, message: str, intent: str) -> bool:
+        if intent != "search_knowledge_base":
+            return False
+
+        lowered = message.lower().strip()
+        if not lowered:
+            return False
+
+        if self._should_block_incident_fallback(lowered):
+            return False
+
+        support_indicators = [
+            "incident",
+            "jira",
+            "active incidents",
+            "open incidents",
+            "status of",
+            "service health",
+            "health status",
+            "troubleshoot",
+            "runbook",
+            "playbook",
+            "outage",
+            "down",
+            "error",
+            "payment service",
+            "database",
+            "auth service",
+            "notification",
+            "api",
+            "service",
+            "what should i do",
+            "show me",
+            "is there an outage",
+        ]
+        if any(indicator in lowered for indicator in support_indicators):
+            return False
+
+        fallback_starters = [
+            "what is ",
+            "what are ",
+            "explain ",
+            "difference between ",
+            "compare ",
+            "how does ",
+            "why does ",
+            "what causes ",
+            "which is better",
+            "tell me about ",
+            "who is ",
+        ]
+        return any(lowered.startswith(starter) for starter in fallback_starters) or any(phrase in lowered for phrase in ["what is kubernetes", "aws availability zones", "redis and memcached", "memory leak"])
+
+    def _should_block_incident_fallback(self, lowered_message: str) -> bool:
+        incident_indicators = [
+            "incident",
+            "outage",
+            "failing",
+            "failed",
+            "error",
+            "errors",
+            "timeout",
+            "degraded",
+            "service",
+            "root cause",
+            "workaround",
+            "resolution",
+            "investigation",
+            "latency",
+            "downtime",
+            "availability",
+            "production issue",
+        ]
+        return any(indicator in lowered_message for indicator in incident_indicators)
 
     def chat(self, request: ChatRequest) -> ChatResponse:
         conv_id = request.conversation_id or str(uuid.uuid4())
@@ -594,8 +682,17 @@ What can I help you with today?"""
         # 1. Classify intent
         intent, params = self.classifier.classify(message)
 
-        # 2. Execute tool
-        if intent == "get_specific_field":
+        # 2. Fallback to the general-purpose LLM only for unmatched, non-support questions.
+        if self._should_use_llm_fallback(message, intent):
+            if self._should_block_incident_fallback(message.lower()):
+                response_text = "I couldn't determine the incident workflow for this request. Please provide additional incident details."
+                sources = []
+                tools_used = []
+            else:
+                response_text = self.llm_client.get_response(message)
+                sources = []
+                tools_used = ["llm_fallback"]
+        elif intent == "get_specific_field":
             result = self.tools.execute("get_incident", incident_id=params["incident_id"])
             response_text, sources = self.formatter.format(intent, result, message, field=params.get("field"))
             tools_used = ["get_incident"]
@@ -619,4 +716,51 @@ What can I help you with today?"""
             sources=sources,
             tools_used=tools_used,
             conversation_id=conv_id
+        )
+
+    def analyze_screenshot(self, image_bytes: bytes, filename: str = "", conversation_id: Optional[str] = None) -> ChatResponse:
+        conv_id = conversation_id or str(uuid.uuid4())
+        logger.info("Screenshot workflow started for conversation_id=%s, filename=%s, bytes=%s", conv_id, filename, len(image_bytes))
+        analysis = self.screenshot_analyzer.analyze_image(image_bytes, filename)
+        logger.info("Classification result for %s: %s", filename, analysis)
+
+        if analysis.get("error"):
+            logger.error("Screenshot analysis failed before Smart Investigation: %s", analysis.get("error"))
+            return ChatResponse(
+                response=analysis["error"],
+                sources=[],
+                tools_used=[],
+                conversation_id=conv_id,
+            )
+
+        service = analysis.get("affected_service") or "general"
+        description = analysis.get("description") or analysis.get("detected_issue") or "Incident screenshot analysis"
+        request = {"service_or_issue": service, "description": description}
+        logger.info("Smart Investigation request: %s", request)
+
+        result = self.tools.execute(
+            "get_comprehensive_troubleshooting",
+            service_or_issue=service,
+            description=description,
+        )
+        logger.info("Smart Investigation response: %s", result.data)
+        smart_response, sources = self.formatter._format_get_comprehensive_troubleshooting(result, description)
+        logger.info("Formatted Smart Investigation response: %s", smart_response)
+
+        screenshot_response = (
+            "# 📷 Incident Screenshot Analysis\n\n"
+            f"## Detected Issue\n{analysis.get('detected_issue', 'Incident identified')}\n\n"
+            f"## Affected Service\n{analysis.get('affected_service', 'general').capitalize()}\n\n"
+            f"## Severity\n{analysis.get('severity', 'medium').capitalize()}\n\n"
+            f"## Likely Root Cause\n{analysis.get('likely_root_cause', 'Unable to determine from the screenshot.')}\n\n"
+            f"## Extracted Error Details\n{analysis.get('extracted_error_details', 'No readable details extracted.')}\n\n"
+            f"{smart_response}"
+        )
+        logger.info("Final formatted response: %s", screenshot_response)
+
+        return ChatResponse(
+            response=screenshot_response,
+            sources=sources,
+            tools_used=["get_comprehensive_troubleshooting"],
+            conversation_id=conv_id,
         )

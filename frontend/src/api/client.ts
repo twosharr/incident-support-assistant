@@ -63,6 +63,16 @@ export const chatApi = {
     });
     return response.data;
   },
+  uploadImage: async (file: File, conversationId: string): Promise<ChatResponse> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("conversation_id", conversationId);
+
+    const response = await axios.post(`${API_BASE}/chat/upload-image`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
+  },
 };
 
 export const incidentsApi = {
