@@ -1,0 +1,30 @@
+{
+  "generated_at": "synthetic-test-data",
+  "images": [
+    {
+      "filename": "incident_01_database_timeout.png",
+      "title": "Database Timeout",
+      "service": "database"
+    },
+    {
+      "filename": "incident_02_payment_gateway_timeout.png",
+      "title": "Payment Gateway Timeout",
+      "service": "payment"
+    },
+    {
+      "filename": "incident_03_redis_auth_failure.png",
+      "title": "Redis/Auth Failure",
+      "service": "auth"
+    },
+    {
+      "filename": "incident_04_load_balancer_misconfiguration.png",
+      "title": "Load Balancer Misconfiguration",
+      "service": "infrastructure"
+    },
+    {
+      "filename": "incident_05_notification_queue_delay.png",
+      "title": "Notification Queue Delay",
+      "service": "notification"
+    }
+  ]
+}

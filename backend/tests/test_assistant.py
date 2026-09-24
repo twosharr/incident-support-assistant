@@ -1,10 +1,14 @@
 """
 Test suite for the AI Incident Support Assistant.
 """
+from pathlib import Path
+import tempfile
+
 import pytest
+from app.config import Settings
 from app.integrations.data_store import DataStore
 from app.tools.tool_registry import ToolRegistry
-from app.ai.assistant import AIAssistant, IntentClassifier
+from app.ai.assistant import AIAssistant, IntentClassifier, ResponseFormatter
 from app.models import ChatRequest
 
 
@@ -76,6 +80,25 @@ class TestDataStore:
         playbook = store.get_playbook("unknown-service-xyz")
         assert playbook is not None
         assert "steps" in playbook
+
+
+class TestSettings:
+    def test_env_file_values_with_spaces_are_trimmed(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            env_path = Path(temp_dir) / ".env"
+            env_path.write_text(
+                "GEMINI_API_KEY= gemini_test_key\nGEMINI_MODEL= gemini-3.6-flash\n",
+                encoding="utf-8",
+            )
+
+            values = Settings._read_env_file(env_path)
+
+            assert values["GEMINI_API_KEY"] == "gemini_test_key"
+            assert values["GEMINI_MODEL"] == "gemini-3.6-flash"
+
+        settings = Settings()
+        assert settings.GEMINI_API_KEY
+        assert settings.GEMINI_MODEL == "gemini-3.6-flash"
 
 
 class TestToolRegistry:
@@ -254,6 +277,36 @@ class TestAIAssistant:
         request = ChatRequest(message="What is the status of INC12345?", conversation_id=conv_id)
         response = self.assistant.chat(request)
         assert response.conversation_id == conv_id
+
+    def test_general_knowledge_query_uses_llm_fallback(self):
+        self.assistant.llm_client.api_key = "fake-key"
+        self.assistant.llm_client.get_response = lambda message: "Kubernetes is a container orchestration platform."
+
+        request = ChatRequest(message="What is Kubernetes?")
+        response = self.assistant.chat(request)
+        assert response.response == "Kubernetes is a container orchestration platform."
+        assert "llm_fallback" in response.tools_used
+
+    def test_general_knowledge_query_without_api_key_returns_unavailable(self):
+        self.assistant.llm_client.api_key = ""
+
+        request = ChatRequest(message="Difference between Redis and Memcached?")
+        response = self.assistant.chat(request)
+        assert response.response == "LLM fallback is currently unavailable."
+        assert "llm_fallback" in response.tools_used
+
+    def test_general_knowledge_query_on_quota_error_returns_quota_message(self):
+        self.assistant.llm_client.api_key = "fake-key"
+        self.assistant.llm_client.client = type("Client", (), {
+            "models": type("Models", (), {
+                "generate_content": lambda *args, **kwargs: (_ for _ in ()).throw(Exception("429 RESOURCE_EXHAUSTED. quota exceeded for free tier requests"))
+            })()
+        })()
+
+        request = ChatRequest(message="What is Kubernetes?")
+        response = self.assistant.chat(request)
+        assert response.response == "Gemini fallback is temporarily unavailable due to API quota limits. Please retry in a few moments."
+        assert "llm_fallback" in response.tools_used
 
     def test_all_services_status(self):
         request = ChatRequest(message="Show me the status of all services")

@@ -1,4 +1,4 @@
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Message } from "../hooks/useChat";
 
@@ -19,6 +19,16 @@ const TOOL_LABELS: Record<string, { icon: string; label: string }> = {
   get_mttr_metrics: { icon: "📈", label: "MTTR Analytics" },
   search_knowledge_base: { icon: "📚", label: "Knowledge Base" },
   get_all_services_status: { icon: "🗺️", label: "System Status" },
+};
+
+const markdownComponents: Components = {
+  code({ className, children, ...props }) {
+    return (
+      <code className={className} {...props}>
+        {children}
+      </code>
+    );
+  },
 };
 
 export function MessageBubble({ message, onSpeak }: Props) {
@@ -86,7 +96,7 @@ export function MessageBubble({ message, onSpeak }: Props) {
         </div>
         <div className="bg-teams-surface rounded-2xl rounded-tl-none px-4 py-3 border border-teams-border">
           <div className="prose-teams text-sm text-teams-text">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
               {message.displayContent ?? message.content}
             </ReactMarkdown>
             {message.isTyping && (

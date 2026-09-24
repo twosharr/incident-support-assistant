@@ -10,7 +10,7 @@ interface Props {
 }
 
 export function ChatWindow({ pendingQuery, onClearPendingQuery }: Props) {
-  const { messages, isLoading, sendMessage, clearConversation } = useChat();
+  const { messages, isLoading, sendMessage, uploadImage, clearConversation } = useChat();
   const {
     isListening,
     isSpeaking,
@@ -25,6 +25,7 @@ export function ChatWindow({ pendingQuery, onClearPendingQuery }: Props) {
   const [inputValue, setInputValue] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -85,6 +86,14 @@ export function ChatWindow({ pendingQuery, onClearPendingQuery }: Props) {
       },
       2000
     );
+  };
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    await uploadImage(file);
+    event.target.value = "";
   };
 
   return (
@@ -195,6 +204,26 @@ export function ChatWindow({ pendingQuery, onClearPendingQuery }: Props) {
 
           {/* Right-side Action Button Group (Copilot Style) */}
           <div className="flex items-center gap-1 pb-0.5">
+            <input
+              ref={uploadInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={handleImageUpload}
+            />
+
+            <button
+              type="button"
+              onClick={() => uploadInputRef.current?.click()}
+              disabled={isLoading}
+              title="Upload a screenshot for OCR analysis"
+              className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-all bg-teams-surface hover:bg-teams-sidebar text-teams-text-muted hover:text-teams-text border border-teams-border disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12V4m0 0l-4 4m4-4l4 4M4 16l4-4" />
+              </svg>
+            </button>
+
             {/* Speech Recognition (Microphone) Button */}
             {speechSupported && (
               <button
