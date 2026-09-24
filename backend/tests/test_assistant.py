@@ -9,6 +9,7 @@ from app.config import Settings
 from app.integrations.data_store import DataStore
 from app.tools.tool_registry import ToolRegistry
 from app.ai.assistant import AIAssistant, IntentClassifier, ResponseFormatter
+from app.ai.llm_client import LLMFallbackClient
 from app.models import ChatRequest
 
 
@@ -227,6 +228,61 @@ class TestIntentClassifier:
 class TestAIAssistant:
     def setup_method(self):
         self.assistant = AIAssistant()
+
+    def test_llm_fallback_does_not_truncate_mid_sentence(self):
+        client = LLMFallbackClient(api_key="fake-key")
+
+        long_text = " ".join([
+            "Kubernetes is an open-source container orchestration platform used to automate the deployment, scaling, and management of containerized applications.",
+            "It groups containers into pods and keeps them running across a cluster of machines.",
+            "Kubernetes handles scheduling, self-healing, service discovery, and load balancing.",
+            "It is widely used with Docker and cloud platforms to run resilient applications at scale.",
+            "In practice, teams rely on Kubernetes to manage application availability, rollouts, and recovery without manual intervention.",
+            "Kubernetes is an open-source container orchestration platform used to automate the deployment, scaling, and management of containerized applications.",
+            "It groups containers into pods and keeps them running across a cluster of machines.",
+            "Kubernetes handles scheduling, self-healing, service discovery, and load balancing.",
+            "It is widely used with Docker and cloud platforms to run resilient applications at scale.",
+            "In practice, teams rely on Kubernetes to manage application availability, rollouts, and recovery without manual intervention.",
+            "Kubernetes is an open-source container orchestration platform used to automate the deployment, scaling, and management of containerized applications.",
+            "It groups containers into pods and keeps them running across a cluster of machines.",
+            "Kubernetes handles scheduling, self-healing, service discovery, and load balancing.",
+            "It is widely used with Docker and cloud platforms to run resilient applications at scale.",
+            "In practice, teams rely on Kubernetes to manage application availability, rollouts, and recovery without manual intervention.",
+            "Kubernetes is an open-source container orchestration platform used to automate the deployment, scaling, and management of containerized applications.",
+            "It groups containers into pods and keeps them running across a cluster of machines.",
+            "Kubernetes handles scheduling, self-healing, service discovery, and load balancing.",
+            "It is widely used with Docker and cloud platforms to run resilient applications at scale.",
+            "In practice, teams rely on Kubernetes to manage application availability, rollouts, and recovery without manual intervention."
+        ])
+
+        class DummyPart:
+            def __init__(self, text):
+                self.text = text
+
+        class DummyContent:
+            def __init__(self, text):
+                self.parts = [DummyPart(text)]
+
+        class DummyCandidate:
+            def __init__(self, text):
+                self.content = DummyContent(text)
+
+        class DummyResponse:
+            def __init__(self, text):
+                self.candidates = [DummyCandidate(text)]
+
+        class DummyModels:
+            def generate_content(self, *args, **kwargs):
+                return DummyResponse(long_text)
+
+        client.client = type("DummyClient", (), {"models": DummyModels()})()
+
+        response = client.get_response("What is Kubernetes?")
+
+        assert response.endswith(".")
+        assert "..." not in response
+        assert "Kubernetes is an open-source container orchestration platform" in response
+        assert "self-healing" in response
 
     def test_greeting(self):
         request = ChatRequest(message="Hello")
